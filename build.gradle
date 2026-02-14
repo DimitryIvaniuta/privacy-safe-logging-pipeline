@@ -1,0 +1,52 @@
+plugins {
+    id 'java'
+    alias(libs.plugins.spring.boot)
+}
+
+group = 'com.github.dimitryivaniuta'
+version = '0.1.0-SNAPSHOT'
+
+def bootVer = libs.versions.springBoot.get()
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(libs.versions.java.get().toInteger())
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // ✅ this is what gives versions to starters (and to flyway/postgres/kafka/etc)
+    implementation enforcedPlatform("org.springframework.boot:spring-boot-dependencies:${bootVer}")
+    testImplementation enforcedPlatform("org.springframework.boot:spring-boot-dependencies:${bootVer}")
+
+    implementation libs.spring.boot.starter.web
+    implementation libs.spring.boot.starter.validation
+    implementation libs.spring.boot.starter.actuator
+    implementation libs.spring.boot.starter.data.jpa
+    implementation libs.spring.boot.starter.data.redis
+    implementation libs.spring.boot.starter.security
+    implementation libs.spring.boot.starter.oauth2.resource.server
+    implementation libs.micrometer.registry.prometheus
+
+    implementation libs.flyway.core
+    implementation libs.postgresql
+    implementation libs.spring.kafka
+
+    implementation libs.logstash.logback.encoder
+
+    compileOnly libs.lombok
+    annotationProcessor libs.lombok
+
+    testImplementation libs.spring.boot.starter.test
+    testImplementation libs.spring.security.test
+    testImplementation libs.bundles.testcontainers
+
+    testCompileOnly libs.lombok
+    testAnnotationProcessor libs.lombok
+}
+
+tasks.withType(Test).configureEach { useJUnitPlatform() }
