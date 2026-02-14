@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true" scanPeriod="30 seconds">
+
+    <conversionRule conversionWord="redactedMessage"
+                    converterClass="com.github.dimitryivaniuta.gateway.logging.RedactedMessageConverter"/>
+    <conversionRule conversionWord="redactedException"
+                    converterClass="com.github.dimitryivaniuta.gateway.logging.RedactedThrowableConverter"/>
+
+    <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp>
+                    <timeZone>UTC</timeZone>
+                </timestamp>
+                <logLevel/>
+                <loggerName/>
+                <threadName/>
+
+                <!-- Safety net: redact MDC values too -->
+                <provider class="com.github.dimitryivaniuta.gateway.logging.RedactingMdcJsonProvider"/>
+
+                <pattern>
+                    <pattern>{"message":"%redactedMessage","exception":"%redactedException"}</pattern>
+                </pattern>
+            </providers>
+        </encoder>
+    </appender>
+
+    <!-- Default: async logging -->
+    <springProfile name="!test">
+        <appender name="ASYNC_CONSOLE" class="ch.qos.logback.classic.AsyncAppender">
+            <queueSize>8192</queueSize>
+            <discardingThreshold>0</discardingThreshold>
+            <neverBlock>true</neverBlock>
+            <appender-ref ref="CONSOLE_JSON"/>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="ASYNC_CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <!-- Tests: sync logging (stable OutputCapture) -->
+    <springProfile name="test">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE_JSON"/>
+        </root>
+    </springProfile>
+
+</configuration>

@@ -1,0 +1,61 @@
+server:
+  port: 8080
+
+spring:
+  profiles:
+    default: oidc
+
+  application:
+    name: privacy-safe-logging-pipeline
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/app
+    username: app
+    password: app
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+
+app:
+  logging:
+    correlation-header: X-Correlation-Id
+
+  # Demo credentials for local testing ONLY.
+  security:
+    users:
+      - username: auditor
+        password: auditor
+        roles: [AUDITOR]
+      - username: admin
+        password: admin
+        roles: [AUDITOR, ADMIN]
+
+  audit:
+    crypto:
+      active-kid: k1
+      keys:
+        - kid: k1
+          key: "SaVIuBoNH0ExBCGrnNGxqbzYQS9Iylckf4pTtQt+rxA="
+        - kid: k0
+          key: "4rQUaQQq9nHrHQgg1QFiRiJQ4LkLFflD+Qk83yINwEc="
