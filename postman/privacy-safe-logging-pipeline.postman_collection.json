@@ -1,0 +1,635 @@
+{
+  "info": {
+    "name": "privacy-safe-logging-pipeline",
+    "_postman_id": "f4301321-bbc1-475d-8277-cc41382f2286",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "kcBaseUrl",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "realm",
+      "value": "privacy-logs"
+    },
+    {
+      "key": "clientId",
+      "value": "local-dev"
+    },
+    {
+      "key": "username",
+      "value": "auditor"
+    },
+    {
+      "key": "password",
+      "value": "auditor"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "adminUsername",
+      "value": "admin"
+    },
+    {
+      "key": "adminPassword",
+      "value": "admin"
+    },
+    {
+      "key": "adminAccessToken",
+      "value": ""
+    },
+    {
+      "key": "reencryptJobId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth - Get Access Token (Keycloak password grant)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var json = pm.response.json();",
+              "pm.collectionVariables.set('accessToken', json.access_token);",
+              "pm.test('token received', function () { pm.expect(json.access_token).to.be.a('string'); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
+        ],
+        "url": {
+          "raw": "{{kcBaseUrl}}/realms/{{realm}}/protocol/openid-connect/token",
+          "host": [
+            "{{kcBaseUrl}}"
+          ],
+          "path": [
+            "realms",
+            "{{realm}}",
+            "protocol",
+            "openid-connect",
+            "token"
+          ]
+        },
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "grant_type",
+              "value": "password"
+            },
+            {
+              "key": "client_id",
+              "value": "{{clientId}}"
+            },
+            {
+              "key": "username",
+              "value": "{{username}}"
+            },
+            {
+              "key": "password",
+              "value": "{{password}}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Auth - Get Admin Token (Keycloak)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var json = pm.response.json();",
+              "pm.collectionVariables.set('adminAccessToken', json.access_token);",
+              "pm.test('admin token received', function () { pm.expect(json.access_token).to.be.a('string'); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
+        ],
+        "url": {
+          "raw": "{{kcBaseUrl}}/realms/{{realm}}/protocol/openid-connect/token",
+          "host": [
+            "{{kcBaseUrl}}"
+          ],
+          "path": [
+            "realms",
+            "{{realm}}",
+            "protocol",
+            "openid-connect",
+            "token"
+          ]
+        },
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "grant_type",
+              "value": "password"
+            },
+            {
+              "key": "client_id",
+              "value": "{{clientId}}"
+            },
+            {
+              "key": "username",
+              "value": "{{adminUsername}}"
+            },
+            {
+              "key": "password",
+              "value": "{{adminPassword}}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Demo Log (PII redacted in logs)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Correlation-Id",
+            "value": "pm-corr-1"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/demo/log",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "demo",
+            "log"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"phone\": \"+48 500 600 700\",\n  \"cardNumber\": \"4111 1111 1111 1111\",\n  \"message\": \"hello\"\n}"
+        }
+      }
+    },
+    {
+      "name": "MDC leak (PII in MDC must be redacted)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Correlation-Id",
+            "value": "pm-corr-mdc"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/demo/mdc-leak",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "demo",
+            "mdc-leak"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"mdc.user@example.com\",\n  \"phone\": \"+48 501 601 701\",\n  \"cardNumber\": \"4111 1111 1111 1111\",\n  \"message\": \"hello\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Sensitive Event (stored in audit DB)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Correlation-Id",
+            "value": "pm-corr-2"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/demo/sensitive-event",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "demo",
+            "sensitive-event"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"sensitive.user@example.com\",\n  \"phone\": \"+48 600 700 800\",\n  \"cardNumber\": \"4111 1111 1111 1111\",\n  \"message\": \"store to audit\"\n}"
+        }
+      }
+    },
+    {
+      "name": "List Audit Events",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/audit/events?limit=20",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "audit",
+            "events"
+          ],
+          "query": [
+            {
+              "key": "limit",
+              "value": "20"
+            }
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Admin - List Audit Crypto Keys",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/crypto/keys",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "admin",
+            "crypto",
+            "keys"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Admin - Generate New AES Key",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/crypto/generate?kid=k2",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "admin",
+            "crypto",
+            "generate"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Admin - Re-encrypt Batch (k0 -> k1)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/crypto/reencrypt?fromKid=k0&toKid=k1&limit=200",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "admin",
+            "crypto",
+            "reencrypt"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Admin - Ring Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/crypto/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "admin",
+            "crypto",
+            "health"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Admin - Promote Active Key",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/crypto/promote?kid=k1",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "admin",
+            "crypto",
+            "promote"
+          ],
+          "query": [
+            {
+              "key": "kid",
+              "value": "k1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Admin - Start Re-encrypt Job",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var json = pm.response.json();",
+              "if (json.jobId) { pm.collectionVariables.set('reencryptJobId', json.jobId); }",
+              "pm.test('job started', function () { pm.expect(json.jobId).to.be.a('string'); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/crypto/reencrypt/start?fromKid=k0&toKid=k1&batchSize=200&throttleMs=25",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "admin",
+            "crypto",
+            "reencrypt",
+            "start"
+          ],
+          "query": [
+            {
+              "key": "fromKid",
+              "value": "k0"
+            },
+            {
+              "key": "toKid",
+              "value": "k1"
+            },
+            {
+              "key": "batchSize",
+              "value": "200"
+            },
+            {
+              "key": "throttleMs",
+              "value": "25"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Admin - Get Re-encrypt Job Status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/crypto/reencrypt/{{reencryptJobId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "admin",
+            "crypto",
+            "reencrypt",
+            "{{reencryptJobId}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Admin - Safe Promote Runbook",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/crypto/runbook/safe-promote?kid=k2&graceDays=30",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "admin",
+            "crypto",
+            "runbook",
+            "safe-promote"
+          ],
+          "query": [
+            {
+              "key": "kid",
+              "value": "k2"
+            },
+            {
+              "key": "graceDays",
+              "value": "30"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Admin - Deprecate Key",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/crypto/deprecate?kid=k1&graceDays=30",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "admin",
+            "crypto",
+            "deprecate"
+          ],
+          "query": [
+            {
+              "key": "kid",
+              "value": "k1"
+            },
+            {
+              "key": "graceDays",
+              "value": "30"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Admin - Key Policy",
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/crypto/policy",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "admin",
+            "crypto",
+            "policy"
+          ]
+        }
+      }
+    }
+  ]
+}
